@@ -11,15 +11,18 @@ Functionalities:
 
 Data Acquisition and Preprocessing:
 Utilize appropriate data sources (financial databases, user interactions) and cleaning techniques to prepare data suitable for Deep Learning models.
+
 Deep Learning Model Development:
 Train Deep Learning models (e.g., Recurrent Neural Networks) to forecast future investment returns or identify potentially profitable investment opportunities.
 Functions for model training and evaluation would be included here (not explicitly mentioned earlier).
+
 Modern Portfolio Theory Integration:
 calculate_annualized_returns(newdf, years=5): Calculates annualized returns for investments, incorporating Deep Learning model predictions.
 calculate_variance(returns): Estimates the variance of daily returns for each investment, still relevant for risk assessment.
 calculate_sharpe_ratio(returns, rf=0.02): Maintains the Sharpe Ratio calculation for risk-adjusted return analysis.
 Customer Classification (potentially enhanced):
 classify_customer(expected_returns, initial_investment, time_period, annualized_returns): Classifies the user based on their desired return, initial investment, investment horizon (risk tolerance), and potentially incorporate Deep Learning model predictions.
+
 Portfolio Generation and Analysis:
 matching_stocks(classified_stocks, customer_classification): Identifies investments matching the user's classification (return and risk).
 generate_random_portfolio(matching_stocks, other_stocks, min_portfolio_size, max_portfolio_size): Generates a random portfolio with a specified size, considering both matching and non-matching investments.
