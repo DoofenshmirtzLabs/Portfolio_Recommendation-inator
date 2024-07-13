@@ -13,7 +13,7 @@ Data Acquisition and Preprocessing:
 Utilize appropriate data sources (financial databases, user interactions) and cleaning techniques to prepare data suitable for Deep Learning models.
 
 Deep Learning Model Development:
-Train Deep Learning models (e.g., Recurrent Neural Networks) to forecast future investment returns or identify potentially profitable investment opportunities.
+Train Deep Learning models (Recurrent Neural Networks) to forecast future investment returns or identify potentially profitable investment opportunities.
 Functions for model training and evaluation would be included here (not explicitly mentioned earlier).
 
 Modern Portfolio Theory Integration:
