@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-import pandas as pd
-import numpy as np
+
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
 from tensorflow.keras.models import Model
@@ -12,8 +11,82 @@ import matplotlib.pyplot as plt
 import os
 import openai
 
+from datetime import datetime, timedelta
+
 # Initialize the OpenAI client with your API key
 client = openai.OpenAI(api_key='')
+
+def train_portfolio_nn(log_returns_local, optimal_portfolio, mean_log_return, sharpe_target=0.5, learning_rate=0.01, epochs=1000):
+    # Covariance matrix of log returns
+    sigma = log_returns_local.cov()
+    np.random.seed(0)
+    
+    n_input = len(optimal_portfolio)
+    n_neurons = n_input
+    inputs = mean_log_return
+
+    class LayerDense:
+        def __init__(self, n_input, n_neurons):
+            self.weights = np.random.randn(n_input, n_neurons)
+            self.biases = np.zeros((1, n_neurons))
+            
+        def forwardpass(self, inputs):
+            self.inputs = inputs
+            self.output = np.dot(inputs, self.weights) + self.biases
+
+    class ActivationRELU:
+        def forward(self, inputs):
+            self.inputs = inputs
+            self.output = np.maximum(0, inputs)
+
+    class ModelOutput:
+        def calculate_output(self, inputs, sigma):
+            expected_returns = np.sum(inputs)
+            expected_risk = np.sqrt(np.dot(inputs.T, np.dot(sigma, inputs)))
+            sharpe_pred = expected_returns / expected_risk
+            return sharpe_pred
+
+    class Loss:
+        def calculate_loss(self, sharpe_pred, sharpe_target):
+            loss = (sharpe_pred - sharpe_target) ** 2
+            return loss
+        
+        def backward(self, sharpe_pred, sharpe_target):
+            dloss_dsharpe = 2 * (sharpe_pred - sharpe_target)
+            return dloss_dsharpe
+
+    # Initialize layers
+    layer1 = LayerDense(n_input, n_neurons)
+    activation1 = ActivationRELU()
+    model_output = ModelOutput()
+    loss_function = Loss()
+
+    for epoch in range(epochs):
+        # Forward pass
+        layer1.forwardpass(inputs)
+        activation1.forward(layer1.output)
+        sharpe_pred = model_output.calculate_output(activation1.output, sigma)
+        
+        # Loss calculation
+        loss = loss_function.calculate_loss(sharpe_pred, sharpe_target)
+        
+        # Backward pass (gradient of loss w.r.t Sharpe ratio)
+        dloss_dsharpe = loss_function.backward(sharpe_pred, sharpe_target)
+        
+        # Calculating the gradient of Sharpe ratio w.r.t portfolio weights
+        expected_returns = np.sum(activation1.output)
+        # Correct formula using weights directly
+        expected_risk = np.sqrt(np.dot(activation1.output.T, np.dot(sigma, activation1.output)))
+
+        
+        dsharpe_dw = (activation1.output / expected_risk) - (expected_returns / (expected_risk ** 3)) * np.dot(sigma, activation1.output)
+        
+        # Backpropagation
+        layer1.weights -= learning_rate * dloss_dsharpe * dsharpe_dw
+
+        if epoch % 100 == 0:
+            print(f'Epoch {epoch}, Loss: {loss}, Sharpe Ratio: {sharpe_pred}')
+            return layer1.weights
 
 # Function to build the autoencoder model
 def build_autoencoder(input_dim):
@@ -69,8 +142,9 @@ def train_autoencoder_and_sort_rmse(df,len_df,epochs=50, batch_size=32):
 def load_and_prepare_data(file_path):
     df = pd.read_excel(file_path)
     df = df.rename(columns={'Unnamed: 0': 'date'})
+    df_with_date=df
     newdf = df.drop('date', axis=1)
-    return newdf
+    return newdf,df_with_date
 
 def calculate_annualized_returns(newdf, years=5):
     w_df = newdf
@@ -348,6 +422,38 @@ def display_portfolio_value_over_time(stock_prices_df, portfolio_weights, stock_
     plt.grid(True)
     plt.show()
 
+def create_matching_stock_df(df, matching):
+    # Initialize an empty DataFrame
+    new_df = pd.DataFrame()
+
+    # Loop through each stock in the matching list
+    for stock in matching:
+        if stock in df.columns:
+            # Concatenate stock data to the new DataFrame along axis 1 (columns)
+            new_df = pd.concat([new_df, df[[stock]]], axis=1)
+
+    return new_df
+
+def create_matching_stock_df_withdate(df, matching, years):
+    # Convert the 'date' column to datetime format
+    df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+    
+    # Calculate the date cutoff
+    date_cutoff = datetime.now() - timedelta(days=years * 365)
+    
+    # Filter the DataFrame to include only data from the past certain number of years
+    df_filtered = df[df['date'] >= date_cutoff]
+    
+    # Initialize an empty DataFrame
+    new_df = pd.DataFrame()
+    
+    # Loop through each stock in the matching list
+    for stock in matching:
+        if stock in df_filtered.columns:
+            # Concatenate stock data to the new DataFrame along axis 1 (columns)
+            new_df = pd.concat([new_df, df_filtered[[stock]]], axis=1)
+    
+    return new_df
 
 
 def get_portfolio_summary(userinputs,portfolio_weights, sharpe_ratio):
@@ -376,7 +482,7 @@ def get_portfolio_summary(userinputs,portfolio_weights, sharpe_ratio):
 # Main execution starts here
 # Main execution starts here
 file_path = 'C:\\Users\\user\\Downloads\\dataset1.xlsx'
-newdf = load_and_prepare_data(file_path)
+newdf,df_with_date = load_and_prepare_data(file_path)
 annualized_returns = calculate_annualized_returns(newdf)
 initial_investment, expected_returns, risk_tolerance, time_period = get_user_input()
 returns = calculate_daily_returns(newdf)
@@ -389,19 +495,25 @@ matching, not_matching = matching_stocks(classified_stocks, customer_classificat
 print(matching)
 len_df = len(matching)
 if len_df:
-    new_df = create_matching_stock_df(newdf, matching)
+    new_df_matching_stocks = create_matching_stock_df(newdf, matching)
 else:
-    new_df = create_matching_stock_df(newdf, not_matching)
-rmse_high, rmse_low = train_autoencoder_and_sort_rmse(new_df, len_df)
+    new_df_matching_stocks = create_matching_stock_df(newdf, not_matching)
+rmse_high, rmse_low = train_autoencoder_and_sort_rmse(new_df_matching_stocks, len_df)
 random_portfolios = generate_random_portfolios(matching, not_matching)
 expected_returns_global, expected_risk_global, expected_sharpe_ratio_global, optimal_portfolio_weights, all_returns, all_risks, all_sharpe_ratios, optimal_portfolio, optimal_stock_names = calculate_portfolio_metrics(newdf, random_portfolios)
+
+optimal_df = create_matching_stock_df_withdate(df_with_date, optimal_stock_names, time_period)
+log_returns_optimal = np.log(optimal_df / optimal_df.shift(1)).dropna()
+mean_log_return_optimal=log_returns_optimal.mean
+neural_output_weights=train_portfolio_nn(log_returns_optimal, optimal_portfolio, mean_log_return_optimal, sharpe_target=0.5, learning_rate=0.01, epochs=1000)
+
 plot_portfolios(all_returns, all_risks, all_sharpe_ratios, expected_returns_global, expected_risk_global, expected_sharpe_ratio_global)
 
 # Display pie chart for the optimal portfolio
 display_pie_chart(optimal_portfolio_weights[optimal_portfolio], optimal_stock_names, initial_investment)
 
 # Display portfolio value over time
-optimal_df = create_matching_stock_df(newdf, optimal_stock_names)
+
 display_portfolio_value_over_time(optimal_df, optimal_portfolio_weights[optimal_portfolio], optimal_stock_names, initial_investment)
 userinputs = {
     'initial_investment_amount': initial_investment,
