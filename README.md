@@ -3,7 +3,8 @@ Project Overview: Deep Learning-Driven Investment Recommendation with Modern Por
 This project ventures beyond traditional investment analysis by combining the power of Deep Learning with Modern Portfolio Theory (MPT). It leverages Deep Learning models to extract insights from historical data and user behavior, while MPT provides a framework for constructing optimal portfolios based on risk-return considerations.
 
 Systems architecture Diagram:
- ![image](https://github.com/user-attachments/assets/013364f0-0bd1-46a3-ad77-3cee906f6212)
+![image](https://github.com/user-attachments/assets/917e2c53-e8e1-42b7-8cb7-ff10880e2560)
+
 
 
 
