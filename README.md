@@ -36,5 +36,9 @@ Deep Learning models can potentially capture complex patterns and relationships 
 MPT provides a structured approach to portfolio construction, ensuring diversification and risk management.
 The combined approach can offer a more robust and data-driven investment recommendation system.
 
+//what i could have done differently:
+1.using LSTM for price prediction was really dumb
+2.could have replaced MPT with an genetic algorithm in a way combining both genetic algorithm and neural network for better portfolio reutrns
+
 
 
